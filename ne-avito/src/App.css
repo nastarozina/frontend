@@ -1,0 +1,58 @@
+/* Делаем так, чтобы приложение занимало минимум всю высоту экрана */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh; /* 100% высоты видимой области экрана */
+}
+
+/* Шапка */
+.header {
+  background-color: #282c34;
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header .logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.header .nav {
+  display: flex;
+  gap: 20px;
+}
+
+/* Стили для ссылок навигации */
+.header .nav a {
+  color: #61dafb;
+  text-decoration: none;
+  font-size: 1.1rem;
+  transition: color 0.3s;
+}
+
+.header .nav a:hover {
+  color: white;
+  text-decoration: underline;
+}
+
+/* Основной контент растягивается и толкает футер вниз */
+.main-content {
+  flex: 1; /* Ключевое свойство! Занимает всё доступное пространство */
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Подвал */
+.footer {
+  background-color: #282c34;
+  color: #999;
+  text-align: center;
+  padding: 1rem;
+  margin-top: auto; /* Дополнительная гарантия прижатия к низу */
+}

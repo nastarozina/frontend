@@ -1,0 +1,16 @@
+services:
+  minio:
+    image: webhippie/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"   # API (для работы с файлами)
+      - "9001:9001"   # Web-консоль (UI для управления)
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+volumes:
+  minio_data:
