@@ -1,10 +1,11 @@
-import { NavLink } from 'react-router-dom';
-import './styles/header.css';
+import { NavLink } from "react-router-dom";
+import "./styles/Header.css";
 
 const navLinks = [
-    { to: '/', label: 'Главная' },
-    { to: '/about', label: 'О нас' },
-  ];
+  { to: "/", label: "Главная" },
+  { to: "/addBanner", label: "+ Разместить объявление" },
+  { to: "/about", label: "О нас" },
+];
 
 export default function Header() {
     return (
@@ -13,7 +14,7 @@ export default function Header() {
         <nav className="nav">
           {navLinks.map((link) => (
             <NavLink
-              key={link.to} // key обязателен при рендере списков
+              key={link.to}
               to={link.to}
               className={({ isActive }) => (isActive ? 'active-link' : '')}
             >

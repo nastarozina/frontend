@@ -1,0 +1,35 @@
+.header {
+  background-color: #282c34;
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header .logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.header .nav {
+  display: flex;
+  gap: 20px;
+}
+
+/* Стили для ссылок навигации */
+.header .nav a {
+  color: #61dafb;
+  text-decoration: none;
+  font-size: 1.1rem;
+  transition: color 0.3s;
+}
+
+.header .nav a:hover {
+  color: white;
+  text-decoration: underline;
+}
+
+.active-link {
+    font-weight: bold;
+}
