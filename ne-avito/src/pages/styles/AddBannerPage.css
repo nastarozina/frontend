@@ -1,0 +1,58 @@
+.page-container {
+    max-width: 100%;
+    margin: 50px 50px;
+    padding: 20px;
+    font-family: Arial;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.error {
+    color: red;
+}
+
+.success {
+    color: green;
+}
+
+form button {
+    width: fit-content;
+    padding: 10px 30px;
+}
+
+.photos {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.photo {
+  position: relative;
+  width: 150px;
+  height: 150px;
+}
+
+.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.photo button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+}
+
+.add {
+  width: 150px;
+  height: 150px;
+  border: 2px dashed #aaa;
+  background: white;
+  cursor: pointer;
+}
