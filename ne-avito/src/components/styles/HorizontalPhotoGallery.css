@@ -1,0 +1,42 @@
+.embla {
+  overflow: hidden;
+  width: 230px;
+  position: relative;
+}
+
+.embla__container {
+  display: flex;
+}
+
+.embla__slide {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+.embla__dots {
+  position: absolute; 
+  bottom: 15px;       
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-left: 10px;
+}
+
+.embla__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #333;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.3s;
+}
+
+.embla__dot:hover {
+  background: #999;
+}
+
+.embla__dot--selected {
+  background: #ccc;
+}

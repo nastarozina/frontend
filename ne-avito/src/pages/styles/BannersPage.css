@@ -1,0 +1,18 @@
+.banners-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+
+.banner {
+  width: fit-content;
+}
+
+.name_banner {
+  color: white;
+  font-size: 18px;
+  text-decoration: none;
+  margin-top: 8px;
+}
+.name_banner:hover {
+  color: cornflowerblue;
+}
