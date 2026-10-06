@@ -1,6 +1,12 @@
-.embla {
+.mini {
   overflow: hidden;
   width: 230px;
+  position: relative;
+}
+
+.big {
+  overflow: hidden;
+  width: 530px;
   position: relative;
 }
 
