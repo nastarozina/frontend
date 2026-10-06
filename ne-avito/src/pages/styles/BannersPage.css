@@ -1,6 +1,7 @@
 .banners-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  row-gap: 20px;
 }
 
 .banner {
@@ -8,10 +9,9 @@
 }
 
 .name_banner {
-  color: white;
-  font-size: 18px;
+  color: var(--text-h);
+  font-size: 17px;
   text-decoration: none;
-  margin-top: 8px;
 }
 .name_banner:hover {
   color: cornflowerblue;

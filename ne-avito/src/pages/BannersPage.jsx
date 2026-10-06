@@ -20,8 +20,8 @@ export default function BannersPage() {
     <div className="banners-container">
       {banners.map((banner) => (
         <div className="banner" key={banner.id}>
-          <HorizontalPhotoGallery className="mini" photos={banner.images} />
-          <Link to={`/banner/${banner.id}/`} className="name_banner">
+          <HorizontalPhotoGallery imageSize={230} photos={banner.images} />
+          <Link to={`/banner/${banner.id}`} className="name_banner">
             {banner.name}
           </Link>
         </div>

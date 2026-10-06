@@ -1,6 +1,5 @@
 .header {
-  background-color: #282c34;
-  color: white;
+  background-color: var(--social-bg);
   padding: 1rem 2rem;
   display: flex;
   justify-content: space-between;
@@ -10,6 +9,8 @@
 .header .logo {
   font-size: 1.5rem;
   font-weight: bold;
+  text-decoration: none;
+  color: var(--text-h);
 }
 
 .header .nav {
@@ -19,15 +20,14 @@
 
 /* Стили для ссылок навигации */
 .header .nav a {
-  color: #61dafb;
+  color: var(--text);
   text-decoration: none;
-  font-size: 1.1rem;
+  font-size: 17px;
   transition: color 0.3s;
 }
 
 .header .nav a:hover {
-  color: white;
-  text-decoration: underline;
+  color: cornflowerblue;
 }
 
 .active-link {

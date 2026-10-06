@@ -1,12 +1,6 @@
-.mini {
+.embla {
   overflow: hidden;
-  width: 230px;
-  position: relative;
-}
-
-.big {
-  overflow: hidden;
-  width: 530px;
+  width: var(--image-size);
   position: relative;
 }
 
@@ -20,19 +14,18 @@
 }
 
 .embla__dots {
-  position: absolute; 
-  bottom: 15px;       
   display: flex;
   justify-content: center;
   gap: 6px;
-  margin-left: 10px;
+  margin-top: 1px;
+  margin-bottom: 3px;
 }
 
 .embla__dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #333;
+  background: var(--border);
   border: none;
   cursor: pointer;
   padding: 0;
@@ -44,5 +37,5 @@
 }
 
 .embla__dot--selected {
-  background: #ccc;
+  background: var(--text);
 }

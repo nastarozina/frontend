@@ -22,9 +22,10 @@ export default function BannerPage() {
        
     return (
       <div className="banner-block">
-        <HorizontalPhotoGallery className="big" photos={banner.images} />
-        <div>
-          <p> {banner.name} </p>
+        <HorizontalPhotoGallery imageSize={500} photos={banner.images} />
+        <div className="text-block">
+          <h2> {banner.name} </h2>
+          <h3> Описание </h3>
           <p> {banner.description} </p>
         </div>
       </div>

@@ -3,7 +3,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import PhotoContainer from "./PhotoContainer";
 import "./styles/HorizontalPhotoGallery.css";
 
-export default function HorizontalPhotoGallery({ photos: galleryPhotos, className }) {
+export default function HorizontalPhotoGallery({ photos: galleryPhotos, imageSize }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: false,
     align: "center",
@@ -41,14 +41,19 @@ export default function HorizontalPhotoGallery({ photos: galleryPhotos, classNam
         <p>Нет фотографий</p>
       ) : (
         <div className="gallery-wrapper">
-          <div className={className} ref={emblaRef}>
+          <div
+            className="embla"
+            style={{ "--image-size": `${imageSize}px` }}
+            ref={emblaRef}
+          >
             <div className="embla__container">
               {galleryPhotos.map((photo) => (
                 <div className="embla__slide" key={photo.id}>
-                  <PhotoContainer className={className} photo={photo} />
+                  <PhotoContainer photo={photo} />
                 </div>
               ))}
             </div>
+          </div>
 
             {scrollSnaps.length > 1 && (
               <div className="embla__dots">
@@ -61,7 +66,6 @@ export default function HorizontalPhotoGallery({ photos: galleryPhotos, classNam
                 ))}
               </div>
             )}
-          </div>
         </div>
       )}
     </div>
