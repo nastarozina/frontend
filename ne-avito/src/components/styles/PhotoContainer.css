@@ -1,6 +1,6 @@
 .image {
-  width: 230px;
-  height: 230px;
+  width: var(--image-size);
+  height: var(--image-size);
   border-radius: 10px;
   object-fit: cover;
   overflow: hidden;

@@ -1,0 +1,21 @@
+.banner-block {
+    display: flex;
+}
+
+.text-block {
+    margin-left: 90px;
+    margin-top: 10px
+}
+
+.text-block h2, h3 {
+    text-align: left;
+}
+
+.text-block h3 {
+    margin-top: 28px;
+    margin-bottom: 8px;
+}
+
+.text-block p {
+    font-size: 17px;
+}

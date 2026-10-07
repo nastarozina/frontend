@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "./styles/BannersPage.css";
 import HorizontalPhotoGallery from "../components/HorizontalPhotoGallery";
+import { Link } from "react-router-dom";
 
 const API_URL = "http://localhost:8000";
 
@@ -19,8 +20,10 @@ export default function BannersPage() {
     <div className="banners-container">
       {banners.map((banner) => (
         <div className="banner" key={banner.id}>
-          <HorizontalPhotoGallery photos={banner.images} />
-          <p className="name_banner">{banner.name}</p>
+          <HorizontalPhotoGallery imageSize={230} photos={banner.images} />
+          <Link to={`/banner/${banner.id}`} className="name_banner">
+            {banner.name}
+          </Link>
         </div>
       ))}
     </div>

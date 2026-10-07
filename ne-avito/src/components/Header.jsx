@@ -1,22 +1,25 @@
 import { NavLink } from "react-router-dom";
 import "./styles/Header.css";
+import { APP_NAME } from "../constants";
+import { Link } from "react-router-dom";
 
 const navLinks = [
-  { to: "/", label: "Главная" },
-  { to: "/addBanner", label: "+ Разместить объявление" },
-  { to: "/about", label: "О нас" },
+    {to: '/addBanner', label: '+ Разместить объявление'},
+    { to: '/about', label: 'О нас' },
 ];
 
 export default function Header() {
     return (
       <header className="header">
-        <div className="logo">MyApp</div>
+        <Link to={`/`} className="logo">
+          {APP_NAME}
+        </Link>
         <nav className="nav">
           {navLinks.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
-              className={({ isActive }) => (isActive ? 'active-link' : '')}
+              className={({ isActive }) => (isActive ? "active-link" : "")}
             >
               {link.label}
             </NavLink>
