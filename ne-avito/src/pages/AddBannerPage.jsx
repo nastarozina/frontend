@@ -1,19 +1,22 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import "./styles/AddBannerPage.css";
 
-const API_URL = "http://localhost:8000";
+const BANNER_API_URL = "http://localhost:8000";
+const CATEGORY_API_URL = "http://localhost:8001";
 
 export default function AddBannerPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [categoryId, setCategory] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [images, setImages] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const inputRef = useRef(null);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const newFiles = Array.from(e.target.files);
@@ -27,11 +30,18 @@ export default function AddBannerPage() {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  useEffect(() => {
+    fetch(CATEGORY_API_URL)
+      .then((response) => response.json())
+      .then((data) => {
+        setCategories(data);
+      });
+  }, []);
+
   async function createBanner(event) {
     event.preventDefault();
 
     setError("");
-    setSuccess("");
 
     if (!name.trim()) {
       setError("Введите название объявления");
@@ -43,11 +53,15 @@ export default function AddBannerPage() {
       return;
     }
 
+    if (!selectedCategory) {
+      setError("Выберите категорию");
+    }
+
     try {
       setLoading(true);
 
       // 1. Создаём Banner в MongoDB
-      const bannerResponse = await fetch(`${API_URL}`, {
+      const bannerResponse = await fetch(`${BANNER_API_URL}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -55,7 +69,7 @@ export default function AddBannerPage() {
         body: JSON.stringify({
           name,
           description,
-          categoryId,
+          categoryId: selectedCategory,
         }),
       });
 
@@ -68,7 +82,7 @@ export default function AddBannerPage() {
       // 2. Получаем presigned URL для MinIO
       for (const image of images) {
         const uploadUrlResponse = await fetch(
-          `${API_URL}/${banner.id}/images/upload-url`,
+          `${BANNER_API_URL}/${banner.id}/images/upload-url`,
           {
             method: "POST",
             headers: {
@@ -101,7 +115,7 @@ export default function AddBannerPage() {
 
         // 4. Подтверждаем загрузку
         const completeResponse = await fetch(
-          `${API_URL}/${banner.id}/images/${uploadData.imageId}/complete`,
+          `${BANNER_API_URL}/${banner.id}/images/${uploadData.imageId}/complete`,
           {
             method: "POST",
           },
@@ -112,14 +126,7 @@ export default function AddBannerPage() {
         }
       }
 
-      setSuccess(`Объявление создано! ID: ${banner.id}`);
-
-      setName("");
-      setDescription("");
-      setImages([]);
-
-      // Сбрасываем input type=file
-      event.target.reset();
+      navigate(`/banner/${banner.id}`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -129,50 +136,57 @@ export default function AddBannerPage() {
 
   return (
     <div className="page-container">
-      <h1>Создание объявления</h1>
+      <h2>Создание объявления</h2>
 
       <form onSubmit={createBanner}>
-        <label>
-          Название
+        <div className="categories-block">
+          {categories.map((category, _) => (
+            <button
+              className={`category ${selectedCategory === category.id ? "selected" : ""}`}
+              key={category.id}
+              type="button"
+              onClick={() => setSelectedCategory(category.id)}
+            >
+              {category.name}
+            </button>
+          ))}
+        </div>
+
+        <div className="form-block">
+          <label htmlFor="name">Название</label>
           <input
+            id="name"
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Введите название"
             disabled={loading}
           />
-        </label>
+        </div>
 
-        <label>
-          <input
-            type="text"
-            value={categoryId}
-            onChange={(event) => setCategory(event.target.value)}
-            placeholder="Введите категорию"
-            disabled={loading}
-          />
-        </label>
-
-        <label>
-          Описание
+        <div className="form-block">
+          <label htmlFor="description">Описание</label>
           <textarea
+            id="description"
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             placeholder="Введите описание"
             rows={5}
             disabled={loading}
           />
-        </label>
+        </div>
 
-        <label>
-          Изображение
+        <div className="form-block">
+          <label htmlFor="images">Изображения</label>
           <div>
             <div className="photos">
               {images.map((image, index) => (
                 <div className="photo" key={`${image.name}-${index}`}>
                   <img src={URL.createObjectURL(image)} alt={image.name} />
 
-                  <button onClick={() => removeImage(index)}>×</button>
+                  <button className="delete" onClick={() => removeImage(index)}>
+                    ×
+                  </button>
                 </div>
               ))}
 
@@ -181,11 +195,12 @@ export default function AddBannerPage() {
                 onClick={() => inputRef.current.click()}
                 className="add"
               >
-                + Добавить фото
+                +
               </button>
             </div>
 
             <input
+              id="images"
               ref={inputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -195,15 +210,11 @@ export default function AddBannerPage() {
               disabled={loading}
             />
           </div>
-        </label>
-
-        <button type="submit" disabled={loading}>
+        </div>
+        <button className="addBanner" type="submit" disabled={loading}>
           {loading ? "Создание..." : "Разместить"}
         </button>
-
         {error && <p className="error">{error}</p>}
-
-        {success && <p className="success">{success}</p>}
       </form>
     </div>
   );

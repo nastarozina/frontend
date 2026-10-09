@@ -1,32 +1,57 @@
 .page-container {
-    max-width: 100%;
-    margin: 50px 50px;
-    padding: 20px;
-    font-family: Arial;
+    max-width: 60%;
+    margin-left: 160px;
+}
+
+.categories-block {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 50px;
+  margin-bottom: 20px;
+}
+
+.category {
+  border: 1px solid var(--grey);
+  border-radius: 7px;
+  padding: 10px 15px;
+  background-color: var(--bg);
+  width: 200px;
+  white-space: normal;
+  word-wrap: break-word;
+  text-align: left;
+}
+
+.category.selected {
+  background-color: var(--grey);
 }
 
 form {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 40px;
+}
+
+form label {
+  font-size: 20px;
+  letter-spacing: -0.24px;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.form-block {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
 .error {
     color: red;
 }
 
-.success {
-    color: green;
-}
-
-form button {
-    width: fit-content;
-    padding: 10px 30px;
-}
-
 .photos {
   display: flex;
-  gap: 10px;
+  gap: 11px;
   flex-wrap: wrap;
 }
 
@@ -52,7 +77,64 @@ form button {
 .add {
   width: 150px;
   height: 150px;
-  border: 2px dashed #aaa;
-  background: white;
-  cursor: pointer;
+  border: none;
+  border-radius: 7px;
+  background: var(--grey);
+  font-size: 40px;
+  color: var(--text-h);
+}
+
+.delete {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 12px;
+}
+
+input {
+  background: var(--grey);
+  border: none;
+  border-radius: 7px;
+  height: 20px;
+  padding: 10px 10px;
+}
+
+textarea {
+  background: var(--grey);
+  border: none;
+  border-radius: 7px;
+  padding: 10px 10px;
+  font-family: var(--heading);
+  font-size: 14px;
+}
+
+input:focus,
+textarea:focus {
+  outline: 2px solid cornflowerblue;
+}
+
+input:hover,
+textarea:hover,
+.add:hover {
+  background: var(--other-grey);
+}
+
+.addBanner {
+  width: fit-content;
+  padding: 15px 55px;
+  border-radius: 10px;
+  border:none;
+  background: #6179BA;
+  color: white;
+  margin-top: 20px;
+  letter-spacing: 0.6px;
+}
+
+.addBanner:hover {
+  background: #6A84CC;
 }
