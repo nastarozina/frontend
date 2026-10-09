@@ -5,6 +5,8 @@
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
   --accent: #aa3bff;
+  --grey: #F6F6F6;
+  --other-grey: #F2F2F2;
   --accent-bg: rgba(170, 59, 255, 0.1);
   --accent-border: rgba(170, 59, 255, 0.5);
   --social-bg: rgba(244, 243, 236, 0.5);
@@ -38,6 +40,8 @@
     --border: #2e303a;
     --code-bg: #1f2028;
     --accent: #c084fc;
+    --grey: #343434;
+    --other-grey: #393939;
     --accent-bg: rgba(192, 132, 252, 0.15);
     --accent-border: rgba(192, 132, 252, 0.5);
     --social-bg: rgba(47, 48, 58, 0.5);
@@ -72,13 +76,27 @@ h3 {
 
 h2 {
   line-height: 118%;
+  font-size: 28px;
   letter-spacing: -0.24px;
   margin: 0 0 8px;
   @media (max-width: 1024px) {
-    font-size: 20px;
+    font-size: 24px;
   }
 }
+
 p {
   margin: 0;
   color: var(--text-h);
+}
+
+label {
+  color: var(--text-h);
+}
+
+textarea {
+  resize: none;
+}
+
+button {
+  cursor: pointer;
 }
