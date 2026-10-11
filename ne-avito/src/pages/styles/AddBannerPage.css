@@ -1,29 +1,14 @@
 .page-container {
-    max-width: 60%;
+    max-width: 70%;
     margin-left: 160px;
 }
 
 .categories-block {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 15px;
   margin-top: 50px;
   margin-bottom: 20px;
-}
-
-.category {
-  border: 1px solid var(--grey);
-  border-radius: 7px;
-  padding: 10px 15px;
-  background-color: var(--bg);
-  width: 200px;
-  white-space: normal;
-  word-wrap: break-word;
-  text-align: left;
-}
-
-.category.selected {
-  background-color: var(--grey);
 }
 
 form {

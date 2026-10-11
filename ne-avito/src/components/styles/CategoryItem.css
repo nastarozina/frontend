@@ -1,0 +1,25 @@
+.category {
+  border: 1px solid var(--grey);
+  border-radius: 7px;
+  padding: 10px 15px;
+  background-color: var(--bg);
+  width: 200px;
+  height: fit-content;
+  white-space: normal;
+  word-wrap: break-word;
+  text-align: left;
+  cursor: pointer
+}
+
+.category-name {
+  display: flex;
+  justify-content: space-between;
+}
+
+.category.selected {
+  background: var(--grey);
+}
+
+.category span {
+    margin-left: 5px;
+}

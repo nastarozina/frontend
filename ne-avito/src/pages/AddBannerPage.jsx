@@ -1,7 +1,8 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import "./styles/AddBannerPage.css";
 import { BANNER_API, CATEGORY_API } from "../constants";
+import CategoryItem from "../components/CategoryItem";
 
 export default function AddBannerPage() {
   const [name, setName] = useState("");
@@ -35,6 +36,24 @@ export default function AddBannerPage() {
         setCategories(data);
       });
   }, []);
+
+  const categoriesByParent = useMemo(() => {
+    const map = new Map();
+
+    categories.forEach((category) => {
+      const parentId = category.parentId ?? null;
+
+      if (!map.has(parentId)) {
+        map.set(parentId, []);
+      }
+
+      map.get(parentId).push(category);
+    });
+
+    return map;
+  }, [categories]);
+
+  const mainCategories = categoriesByParent.get(null) ?? [];
 
   async function createBanner(event) {
     event.preventDefault();
@@ -137,17 +156,18 @@ export default function AddBannerPage() {
       <h2>Создание объявления</h2>
 
       <form onSubmit={createBanner}>
-        <div className="categories-block">
-          {categories.map((category, _) => (
-            <button
-              className={`category ${selectedCategory === category.id ? "selected" : ""}`}
-              key={category.id}
-              type="button"
-              onClick={() => setSelectedCategory(category.id)}
-            >
-              {category.name}
-            </button>
-          ))}
+        <div>
+          <div className="categories-block">
+            {mainCategories.map((category) => (
+              <CategoryItem
+                key={category.id}
+                category={category}
+                categoriesByParent={categoriesByParent}
+                selectedCategory={selectedCategory}
+                onSelect={setSelectedCategory}
+              />
+            ))}
+          </div>
         </div>
 
         <div className="form-block">
