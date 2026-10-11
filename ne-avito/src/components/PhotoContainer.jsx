@@ -1,7 +1,8 @@
 import "./styles/PhotoContainer.css";
+import { MINIO } from "../constants";
 
 export default function PhotoContainer({ photo }) {
-  const photoURL = `http://localhost:9000/banner/${photo.objectKey}`;
+  const photoURL = `${MINIO}/banner/${photo.objectKey}`;
 
   return (
     <div className="photo-container">

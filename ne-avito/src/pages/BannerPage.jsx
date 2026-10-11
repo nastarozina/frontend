@@ -2,14 +2,14 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import HorizontalPhotoGallery from "../components/HorizontalPhotoGallery";
 import "./styles/BannerPage.css";
-
+import { BANNER_API } from "../constants";
 
 export default function BannerPage() {
     const { bannerId } = useParams();
     const [banner, setBanner] = useState(null);
 
     useEffect(() => {
-      fetch(`http://localhost:8000/${bannerId}`)
+      fetch(`${BANNER_API}/${bannerId}`)
         .then((response) => response.json())
         .then((data) => {
           setBanner(data);
