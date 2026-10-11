@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import "./styles/AddBannerPage.css";
 import { BANNER_API, CATEGORY_API } from "../constants";
@@ -37,9 +37,23 @@ export default function AddBannerPage() {
       });
   }, []);
 
-  const mainCategories = categories.filter(
-    (category) => category.parentId == null,
-  );
+  const categoriesByParent = useMemo(() => {
+    const map = new Map();
+
+    categories.forEach((category) => {
+      const parentId = category.parentId ?? null;
+
+      if (!map.has(parentId)) {
+        map.set(parentId, []);
+      }
+
+      map.get(parentId).push(category);
+    });
+
+    return map;
+  }, [categories]);
+
+  const mainCategories = categoriesByParent.get(null) ?? [];
 
   async function createBanner(event) {
     event.preventDefault();
@@ -148,7 +162,9 @@ export default function AddBannerPage() {
               <CategoryItem
                 key={category.id}
                 category={category}
-                categories={categories}
+                categoriesByParent={categoriesByParent}
+                selectedCategory={selectedCategory}
+                onSelect={setSelectedCategory}
               />
             ))}
           </div>
