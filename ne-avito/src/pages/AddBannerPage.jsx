@@ -1,9 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./styles/AddBannerPage.css";
-
-const BANNER_API_URL = "http://localhost:8000";
-const CATEGORY_API_URL = "http://localhost:8001";
+import { BANNER_API, CATEGORY_API } from "../constants";
 
 export default function AddBannerPage() {
   const [name, setName] = useState("");
@@ -31,7 +29,7 @@ export default function AddBannerPage() {
   };
 
   useEffect(() => {
-    fetch(CATEGORY_API_URL)
+    fetch(CATEGORY_API)
       .then((response) => response.json())
       .then((data) => {
         setCategories(data);
@@ -61,7 +59,7 @@ export default function AddBannerPage() {
       setLoading(true);
 
       // 1. Создаём Banner в MongoDB
-      const bannerResponse = await fetch(`${BANNER_API_URL}`, {
+      const bannerResponse = await fetch(BANNER_API, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -82,7 +80,7 @@ export default function AddBannerPage() {
       // 2. Получаем presigned URL для MinIO
       for (const image of images) {
         const uploadUrlResponse = await fetch(
-          `${BANNER_API_URL}/${banner.id}/images/upload-url`,
+          `${BANNER_API}/${banner.id}/images/upload-url`,
           {
             method: "POST",
             headers: {
@@ -115,7 +113,7 @@ export default function AddBannerPage() {
 
         // 4. Подтверждаем загрузку
         const completeResponse = await fetch(
-          `${BANNER_API_URL}/${banner.id}/images/${uploadData.imageId}/complete`,
+          `${BANNER_API}/${banner.id}/images/${uploadData.imageId}/complete`,
           {
             method: "POST",
           },

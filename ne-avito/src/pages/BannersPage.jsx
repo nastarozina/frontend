@@ -2,19 +2,28 @@ import { useEffect, useState } from "react";
 import "./styles/BannersPage.css";
 import HorizontalPhotoGallery from "../components/HorizontalPhotoGallery";
 import { Link } from "react-router-dom";
-
-const API_URL = "http://localhost:8000";
+import { BANNER_API } from "../constants";
 
 export default function BannersPage() {
   const [banners, setBanners] = useState([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(API_URL)
-      .then((response) => response.json())
-      .then((data) => {
-        setBanners(data);
-      });
-  }, []);
+  fetch(BANNER_API)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Ошибка при получении всех баннеров");
+      }
+
+      return response.json();
+    })
+    .then((data) => {
+      setBanners(data);
+    })
+    .catch((err) => {
+      setError(err.message);
+    });
+}, []);
 
   return (
     <div className="banners-container">
@@ -26,6 +35,7 @@ export default function BannersPage() {
           </Link>
         </div>
       ))}
+      {error && <p className="error">{error}</p>}
     </div>
   );
 }
