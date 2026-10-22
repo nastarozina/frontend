@@ -19,15 +19,10 @@
 }
 
 /* Стили для ссылок навигации */
-.header .nav a {
+.nav a {
   color: var(--text);
-  text-decoration: none;
   font-size: 17px;
   transition: color 0.3s;
-}
-
-.header .nav a:hover {
-  color: cornflowerblue;
 }
 
 .active-link {
