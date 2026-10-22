@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import HorizontalPhotoGallery from "../components/HorizontalPhotoGallery";
 import "./styles/BannerPage.css";
@@ -19,14 +19,24 @@ export default function BannerPage() {
     if (!banner) {
         return <div>Loading...</div>;
     }
-       
+    
     return (
-      <div className="banner-block">
-        <HorizontalPhotoGallery imageSize={500} photos={banner.images} />
-        <div className="text-block">
-          <h2> {banner.name} </h2>
-          <h3> Описание </h3>
-          <p> {banner.description} </p>
+      <div className="banner-page">
+        <div className="path">
+          <Link to={`/`}>
+            Главная
+          </Link>
+          {banner.categories.map((category) => {
+            return <p key={category.id}>{` > ${category.name}`}</p>;
+          })}
+        </div>
+        <div className="banner-block">
+          <HorizontalPhotoGallery imageSize={500} photos={banner.images} />
+          <div className="text-block">
+            <h2> {banner.name} </h2>
+            <h3> Описание </h3>
+            <p> {banner.description} </p>
+          </div>
         </div>
       </div>
     );
