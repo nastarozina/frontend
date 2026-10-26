@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./styles/AddBannerPage.css";
 import { BANNER_API, CATEGORY_API } from "../constants";
 import CategoryItem from "../components/CategoryItem";
+import { useAuth } from "react-oidc-context";
 
 export default function AddBannerPage() {
   const [name, setName] = useState("");
@@ -16,6 +17,9 @@ export default function AddBannerPage() {
 
   const inputRef = useRef(null);
   const navigate = useNavigate();
+
+  const auth = useAuth();
+  const token = auth.user?.access_token;
 
   const handleChange = (e) => {
     const newFiles = Array.from(e.target.files);
@@ -60,6 +64,11 @@ export default function AddBannerPage() {
 
     setError("");
 
+    if (!token) {
+      await auth.signinPopup();
+      return;
+    }
+
     if (!name.trim()) {
       setError("Введите название объявления");
       return;
@@ -81,6 +90,7 @@ export default function AddBannerPage() {
       const bannerResponse = await fetch(BANNER_API, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -104,6 +114,7 @@ export default function AddBannerPage() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
               contentType: image.type,
@@ -135,6 +146,9 @@ export default function AddBannerPage() {
           `${BANNER_API}/${banner.id}/images/${uploadData.imageId}/complete`,
           {
             method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           },
         );
 

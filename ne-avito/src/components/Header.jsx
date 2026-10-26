@@ -5,8 +5,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 
 const navLinks = [
-  { to: "/addBanner", label: "+ Разместить объявление" },
-  { to: "/about", label: "О нас" }
+  { to: "/addBanner", label: "+ Разместить объявление" }
 ];
 
 export default function Header() {
