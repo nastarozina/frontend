@@ -22,6 +22,7 @@ export default function BannersPage() {
     fetch(url)
       .then((response) => {
         if (!response.ok) {
+          console.error(`HTTP ${response.status}: ${response.statusText}, ${response.text()}`);
           throw new Error("Ошибка при получении всех баннеров");
         }
 
@@ -29,8 +30,10 @@ export default function BannersPage() {
       })
       .then((data) => {
         setBanners(data);
+        setError("");
       })
       .catch((err) => {
+        console.error(err);
         setError(err.message);
       });
   }, [categoryId]);

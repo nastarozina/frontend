@@ -25,11 +25,9 @@ export default function BannerPage() {
         <div className="path">
           <Link to={`/`}>Главная</Link>
           {banner.categories.map((category) => (
-            <div>
-            <span> {` > `} </span>
-            <Link key={category.id} to={`/?categoryId=${category.id}`}>
-              {category.name}
-            </Link>
+            <div key={category.id}>
+              <span> {` > `} </span>
+              <Link to={`/?categoryId=${category.id}`}>{category.name}</Link>
             </div>
           ))}
         </div>
