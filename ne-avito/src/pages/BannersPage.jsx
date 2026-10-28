@@ -1,29 +1,39 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import "./styles/BannersPage.css";
 import HorizontalPhotoGallery from "../components/HorizontalPhotoGallery";
 import { Link } from "react-router-dom";
 import { BANNER_API } from "../constants";
 
 export default function BannersPage() {
+  const [searchParams] = useSearchParams();
+  const categoryId = searchParams.get("categoryId");
+
   const [banners, setBanners] = useState([]);
   const [error, setError] = useState("");
-
+  
   useEffect(() => {
-  fetch(BANNER_API)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error("Ошибка при получении всех баннеров");
-      }
+    const params = new URLSearchParams();
+    if (categoryId) params.append("categoryId", categoryId);
 
-      return response.json();
-    })
-    .then((data) => {
-      setBanners(data);
-    })
-    .catch((err) => {
-      setError(err.message);
-    });
-}, []);
+    const queryString = params.toString();
+    const url = queryString ? `${BANNER_API}?${queryString}` : BANNER_API;
+
+    fetch(url)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Ошибка при получении всех баннеров");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setBanners(data);
+      })
+      .catch((err) => {
+        setError(err.message);
+      });
+  }, [categoryId]);
 
   return (
     <div className="banners-container">
