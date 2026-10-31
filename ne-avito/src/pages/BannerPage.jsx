@@ -23,12 +23,13 @@ export default function BannerPage() {
     return (
       <div className="banner-page">
         <div className="path">
-          <Link to={`/`}>
-            Главная
-          </Link>
-          {banner.categories.map((category) => {
-            return <p key={category.id}>{` > ${category.name}`}</p>;
-          })}
+          <Link to={`/`}>Главная</Link>
+          {banner.categories.map((category) => (
+            <div key={category.id}>
+              <span> {` > `} </span>
+              <Link to={`/?categoryId=${category.id}`}>{category.name}</Link>
+            </div>
+          ))}
         </div>
         <div className="banner-block">
           <HorizontalPhotoGallery imageSize={500} photos={banner.images} />
