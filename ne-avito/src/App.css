@@ -8,9 +8,8 @@
 /* Основной контент растягивается и толкает футер вниз */
 .main-content {
   flex: 1; /* Ключевое свойство! Занимает всё доступное пространство */
-  padding: 2rem;
-  max-width: 1200px;
   margin: 0 auto;
+  padding: 0 150px;
   width: 100%;
   box-sizing: border-box;
 }
