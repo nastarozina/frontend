@@ -4,6 +4,7 @@ import Footer from "./components/Footer";
 import BannersPage from "./pages/BannersPage";
 import AddBannerPage from "./pages/AddBannerPage";
 import BannerPage from "./pages/BannerPage";
+import ChatsPage from "./pages/ChatsPage";
 import "./App.css";
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
           {/* Маршрут для несуществующих страниц (404) */}
           <Route path="*" element={<h1>Страница не найдена (404)</h1>} />
           <Route path="/banner/:bannerId" element={<BannerPage />} />
+          <Route path="/chats" element={<ChatsPage />} />
         </Routes>
       </main>
 

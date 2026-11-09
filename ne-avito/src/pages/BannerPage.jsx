@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom"; // <-- Добавили useNavigate
 import { useEffect, useState } from "react";
 import HorizontalPhotoGallery from "../components/HorizontalPhotoGallery";
 import "./styles/BannerPage.css";
@@ -6,6 +6,7 @@ import { BANNER_API } from "../constants";
 
 export default function BannerPage() {
     const { bannerId } = useParams();
+    const navigate = useNavigate();
     const [banner, setBanner] = useState(null);
 
     useEffect(() => {
@@ -15,11 +16,16 @@ export default function BannerPage() {
           setBanner(data);
         });
     }, [bannerId]);
-    
+
     if (!banner) {
         return <div>Loading...</div>;
     }
-    
+
+    // Функция для перехода в чат
+    const handleOpenChat = () => {
+        navigate(`/chat/${banner.authorId}`);
+    };
+
     return (
       <div className="banner-page">
         <div className="path">
@@ -34,9 +40,15 @@ export default function BannerPage() {
         <div className="banner-block">
           <HorizontalPhotoGallery imageSize={500} photos={banner.images} />
           <div className="text-block">
-            <h2> {banner.name} </h2>
-            <h3> Описание </h3>
-            <p> {banner.description} </p>
+            <h2>{banner.name}</h2>
+
+            {/* <-- Кнопка написания пользователю */}
+            <button className="write-user-btn" onClick={handleOpenChat}>
+                Написать пользователю
+            </button>
+
+            <h3>Описание</h3>
+            <p>{banner.description}</p>
           </div>
         </div>
       </div>
