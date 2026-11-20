@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from "react-router-dom"; // <-- Добавили useNavigate
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import HorizontalPhotoGallery from "../components/HorizontalPhotoGallery";
 import "./styles/BannerPage.css";
@@ -23,7 +23,9 @@ export default function BannerPage() {
 
     // Функция для перехода в чат
     const handleOpenChat = () => {
-        navigate(`/chat/${banner.authorId}`);
+        const params = new URLSearchParams();
+        params.set("userId", banner.ownerId);
+        navigate(`/chats?${params.toString()}`);
     };
 
     return (

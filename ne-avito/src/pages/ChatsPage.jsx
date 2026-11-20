@@ -1,345 +1,506 @@
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "react-oidc-context";
+import { CHAT_API } from "../constants";   
+import { MdSend } from 'react-icons/md';
 import "./styles/ChatsPage.css";
 
-const API_BASE = "http://localhost:8080/api";
+const CHATS_PAGE_SIZE = 20;
+const MESSAGES_PAGE_SIZE = 30;
 
-const CURRENT_USER_ID = "current-user-id";
+const isTempChat = (chat) => Boolean(chat?.id && String(chat.id).startsWith("temp-"));
 
 export default function ChatsPage() {
     const [searchParams, setSearchParams] = useSearchParams();
-    const navigate = useNavigate();
     const targetUserId = searchParams.get("userId");
 
-    
-    const [chats, setChats] = useState([]);
-    const [isLoadingChats, setIsLoadingChats] = useState(false);
-    const [hasMoreChats, setHasMoreChats] = useState(true);
-    const lastChatAfterRef = useRef(null);
+    const auth = useAuth();
+    const token = auth.user?.access_token;
+    const isAuthenticated = auth.isAuthenticated;
+    const currentUserId = auth.user?.profile?.sub;
 
-    
+    const [chats, setChats] = useState([]);
     const [selectedChat, setSelectedChat] = useState(null);
     const [messages, setMessages] = useState([]);
+
+    const [isLoadingChats, setIsLoadingChats] = useState(false);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-    const [hasMoreMessages, setHasMoreMessages] = useState(true);
-    const lastMessageIdRef = useRef(null);
 
-    
     const [inputText, setInputText] = useState("");
-    const messagesEndRef = useRef(null);
-    const messagesTopRef = useRef(null);
 
-    
-    const fetchChats = useCallback(async (after = null, append = false) => {
-        if (isLoadingChats || (!append && chats.length > 0)) return;
+    // Ref-ы нужны, чтобы observer-ы не пересоздавались на каждом изменении state
+    // и не запускали каскад бесконечных подгрузок.
+    const chatsLoadingRef = useRef(false);
+    const messagesLoadingRef = useRef(false);
+    const chatsLoadedRef = useRef(false);
+    const chatsCursorRef = useRef(null);
+    const chatsHasMoreRef = useRef(true);
+    const messagesCursorRef = useRef(null);
+    const messagesHasMoreRef = useRef(true);
+    const activeChatIdRef = useRef(null);
+    const selectedChatRef = useRef(null);
+    // Строка токена меняется при silent renew (~раз в 4 минуты), но это не должно
+    // перезагружать страницу. Актуальный токен берём из ref в момент запроса.
+    const tokenRef = useRef(token);
+
+    const chatsBottomRef = useRef(null);
+    const messagesTopRef = useRef(null);
+    const messagesEndRef = useRef(null);
+    const messagesAreaRef = useRef(null);
+
+    const selectedChatId = selectedChat?.id ?? null;
+
+    useEffect(() => {
+        selectedChatRef.current = selectedChat;
+    }, [selectedChat]);
+
+    useEffect(() => {
+        tokenRef.current = token;
+    }, [token]);
+
+    const loadChats = useCallback(async (append = false) => {
+        const currentToken = tokenRef.current;
+        if (!isAuthenticated || !currentToken) return;
+        if (chatsLoadingRef.current) return;
+        if (!append && chatsLoadedRef.current) return;
+        if (append && (!chatsHasMoreRef.current || !chatsCursorRef.current)) return;
+
+        chatsLoadingRef.current = true;
         setIsLoadingChats(true);
 
         try {
-            const url = new URL(`${API_BASE}/chat`);
-            url.searchParams.set("size", "20");
-            if (after) url.searchParams.set("after", after);
+            const url = new URL(CHAT_API);
+            url.searchParams.set("size", String(CHATS_PAGE_SIZE));
+            if (append) url.searchParams.set("until", chatsCursorRef.current);
 
             const response = await fetch(url, {
-                headers: { "X-User-Id": CURRENT_USER_ID }
+                headers: { Authorization: `Bearer ${currentToken}` },
             });
-
             if (!response.ok) throw new Error("Failed to fetch chats");
 
             const data = await response.json();
+            const loaded = Array.isArray(data.chats) ? data.chats : [];
 
-            if (data.chats.length < 20) {
-                setHasMoreChats(false);
-            }
+            const previousCursor = chatsCursorRef.current;
+            const oldest = loaded[loaded.length - 1]?.lastModifiedAt ?? null;
 
-            if (data.chats.length > 0) {
-                lastChatAfterRef.current = data.chats[data.chats.length - 1].lastModifiedAt;
-            }
+            // Курсор должен двигаться, иначе подгрузка будет бесконечно
+            // возвращать одну и ту же страницу.
+            const more =
+                loaded.length >= CHATS_PAGE_SIZE &&
+                Boolean(oldest) &&
+                oldest !== previousCursor;
 
-            setChats(prev => append ? [...prev, ...data.chats] : data.chats);
+            chatsHasMoreRef.current = more;
+            if (oldest) chatsCursorRef.current = oldest;
+
+            setChats((prev) => {
+                if (append) {
+                    const known = new Set(prev.map((c) => c.userId));
+                    return [...prev, ...loaded.filter((c) => !known.has(c.userId))];
+                }
+                const temps = prev.filter(isTempChat);
+                const real = loaded.filter((r) => !temps.some((t) => t.userId === r.userId));
+                return [...temps, ...real];
+            });
+
+            if (!append) chatsLoadedRef.current = true;
         } catch (error) {
             console.error("Error fetching chats:", error);
+            chatsHasMoreRef.current = false;
         } finally {
+            chatsLoadingRef.current = false;
             setIsLoadingChats(false);
         }
-    }, [isLoadingChats, chats.length]);
+    }, [isAuthenticated]);
 
-    
-    const fetchMessages = useCallback(async (chat, lastId = null, prepend = false) => {
-        if (!chat || isLoadingMessages) return;
+    const loadMessages = useCallback(async (chat, lastId = null, prepend = false) => {
+        const currentToken = tokenRef.current;
+        if (!isAuthenticated || !currentToken) return;
+        if (!chat || isTempChat(chat)) return;
+        if (messagesLoadingRef.current) return;
+        if (prepend && (!messagesHasMoreRef.current || !lastId)) return;
+
+        messagesLoadingRef.current = true;
         setIsLoadingMessages(true);
 
-        const scrollContainer = messagesTopRef.current?.parentElement;
-        const oldScrollHeight = scrollContainer?.scrollHeight || 0;
+        const chatId = chat.id;
+        const scrollContainer = messagesAreaRef.current;
+        const previousScrollHeight = scrollContainer?.scrollHeight ?? 0;
 
         try {
-            const url = new URL(`${API_BASE}/message/${chat.userId}`);
-            url.searchParams.set("size", "30");
+            const url = new URL(`${CHAT_API}/message/${encodeURIComponent(chat.userId)}`);
+            url.searchParams.set("size", String(MESSAGES_PAGE_SIZE));
             if (lastId) url.searchParams.set("lastMessageId", lastId);
 
             const response = await fetch(url, {
-                headers: { "X-User-Id": CURRENT_USER_ID }
+                headers: { Authorization: `Bearer ${currentToken}` },
             });
-
             if (!response.ok) throw new Error("Failed to fetch messages");
 
             const data = await response.json();
+            const loaded = Array.isArray(data.messages) ? data.messages : [];
 
-            if (data.messages.length < 30) {
-                setHasMoreMessages(false);
-            }
+            // Ответ от предыдущего чата больше не применяем.
+            if (activeChatIdRef.current !== chatId) return;
 
-            if (data.messages.length > 0) {
-                lastMessageIdRef.current = data.messages[data.messages.length - 1].id;
-            }
+            const oldest = loaded[loaded.length - 1]?.id ?? null;
+            const more =
+                loaded.length >= MESSAGES_PAGE_SIZE &&
+                Boolean(oldest) &&
+                oldest !== lastId;
 
-            setMessages(prev => {
+            messagesHasMoreRef.current = more;
+            if (oldest) messagesCursorRef.current = oldest;
+
+            setMessages((prev) => {
+                const incoming = [...loaded].reverse();
                 if (prepend) {
-                    return [...data.messages.slice().reverse(), ...prev];
+                    const known = new Set(prev.map((m) => m.id));
+                    return [...incoming.filter((m) => !known.has(m.id)), ...prev];
                 }
-                return data.messages.slice().reverse();
+                return incoming;
             });
 
-            setChats(prevChats => prevChats.map(c =>
-                c.id === chat.id ? { ...c, unread: false } : c
-            ));
-
+            setChats((prev) => prev.map((c) => (c.id === chatId ? { ...c, unread: false } : c)));
         } catch (error) {
             console.error("Error fetching messages:", error);
+            if (activeChatIdRef.current === chatId) {
+                messagesHasMoreRef.current = false;
+            }
         } finally {
+            messagesLoadingRef.current = false;
             setIsLoadingMessages(false);
 
-            if (prepend && scrollContainer) {
-                setTimeout(() => {
-                    scrollContainer.scrollTop = scrollContainer.scrollHeight - oldScrollHeight;
-                }, 0);
+            if (activeChatIdRef.current === chatId) {
+                requestAnimationFrame(() => {
+                    if (prepend && scrollContainer) {
+                        scrollContainer.scrollTop =
+                            scrollContainer.scrollHeight - previousScrollHeight;
+                    } else if (!prepend) {
+                        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+                    }
+                });
             }
         }
-    }, [isLoadingMessages]);
+    }, [isAuthenticated]);
 
-
+    // Смена пользователя: полный сброс и одна загрузка.
+    // Silent renew токена сюда больше не попадает.
     useEffect(() => {
-        fetchChats(null, false);
-    }, [fetchChats]);
+        chatsLoadedRef.current = false;
+        chatsHasMoreRef.current = true;
+        chatsCursorRef.current = null;
+        messagesHasMoreRef.current = true;
+        messagesCursorRef.current = null;
+        activeChatIdRef.current = null;
 
+        setChats([]);
+        setSelectedChat(null);
+        setMessages([]);
+
+        if (!isAuthenticated || !tokenRef.current) return;
+        loadChats(false);
+    }, [isAuthenticated, loadChats]);
+
+    // Открытие чата по userId из ссылки.
     useEffect(() => {
-        if (targetUserId && !selectedChat) {
-            const existingChat = chats.find(c => c.userId === targetUserId);
-            if (existingChat) {
-                setSelectedChat(existingChat);
-                setSearchParams({});
-            } else {
-                const tempChat = {
-                    id: `temp-${targetUserId}`,
-                    userId: targetUserId,
-                    userName: `Пользователь ${targetUserId}`,
-                    lastMessage: "",
-                    lastModifiedAt: new Date().toISOString(),
-                    unread: false
-                };
-                setSelectedChat(tempChat);
-                setChats(prev => [tempChat, ...prev]);
-                setSearchParams({});
-            }
+        if (!isAuthenticated || !tokenRef.current || !targetUserId) return;
+
+        const existing = chats.find((c) => c.userId === targetUserId);
+        if (existing) {
+            setSelectedChat(existing);
+        } else {
+            const tempChat = {
+                id: `temp-${targetUserId}`,
+                userId: targetUserId,
+                userName: `Пользователь ${targetUserId}`,
+                lastMessage: "",
+                lastModifiedAt: new Date().toISOString(),
+                unread: false,
+            };
+            setSelectedChat(tempChat);
+            setChats((prev) =>
+                prev.some((c) => c.userId === targetUserId) ? prev : [tempChat, ...prev],
+            );
         }
-    }, [targetUserId, chats, selectedChat, setSearchParams]);
+        setSearchParams({}, { replace: true });
+    }, [isAuthenticated, targetUserId, chats, setSearchParams]);
 
+    // Временной чат заменяется реальным, когда тот появляется в списке.
     useEffect(() => {
-        if (selectedChat) {
-            setMessages([]);
-            setHasMoreMessages(true);
-            lastMessageIdRef.current = null;
-            fetchMessages(selectedChat, null, false);
-        }
-    }, [selectedChat, fetchMessages]);
+        if (!selectedChat || !isTempChat(selectedChat)) return;
+        const real = chats.find((c) => c.userId === selectedChat.userId && !isTempChat(c));
+        if (!real) return;
+        setSelectedChat(real);
+        setChats((prev) =>
+            prev.map((c) => (c.userId === real.userId && isTempChat(c) ? real : c)),
+        );
+    }, [chats, selectedChat]);
 
+    // Смена активного чата. Для temp-чата сообщения не загружаются вообще.
     useEffect(() => {
-        if (messages.length > 0) {
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }
-    }, [messages]);
+        const chat = selectedChatRef.current;
+        activeChatIdRef.current = chat && !isTempChat(chat) ? chat.id : null;
+        messagesCursorRef.current = null;
+        messagesHasMoreRef.current = true;
+        setMessages([]);
 
+        if (!isAuthenticated || !tokenRef.current || !chat || isTempChat(chat)) return;
+        loadMessages(chat, null, false);
+    }, [isAuthenticated, selectedChatId, loadMessages]);
+
+    // Подгрузка старых чатов: observer не пересоздаётся при каждом setIsLoadingChats.
+    useEffect(() => {
+        const node = chatsBottomRef.current;
+        if (!node || !isAuthenticated || !tokenRef.current) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (
+                    entries[0]?.isIntersecting &&
+                    chatsHasMoreRef.current &&
+                    !chatsLoadingRef.current
+                ) {
+                    loadChats(true);
+                }
+            },
+            { threshold: 0.1 },
+        );
+
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [isAuthenticated, loadChats]);
+
+    // Подгрузка старых сообщений. Сентайл всегда смонтирован у реального чата,
+    // поэтому observer живёт стабильно и не вызывает повторные запросы сам по себе.
+    useEffect(() => {
+        const node = messagesTopRef.current;
+        if (
+            !node ||
+            !isAuthenticated ||
+            !tokenRef.current ||
+            !selectedChatRef.current ||
+            isTempChat(selectedChatRef.current)
+        ) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (
+                    entries[0]?.isIntersecting &&
+                    messagesHasMoreRef.current &&
+                    !messagesLoadingRef.current &&
+                    messagesCursorRef.current
+                ) {
+                    loadMessages(selectedChatRef.current, messagesCursorRef.current, true);
+                }
+            },
+            { threshold: 0.1 },
+        );
+
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [isAuthenticated, loadMessages, selectedChatId]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!inputText.trim() || !selectedChat) return;
+        const currentToken = tokenRef.current;
+        if (!isAuthenticated || !currentToken || !inputText.trim() || !selectedChat) return;
 
-        const textToSend = inputText;
+        const textToSend = inputText.trim();
         setInputText("");
 
         const tempMessage = {
             id: `temp-${Date.now()}`,
             text: textToSend,
-            senderId: CURRENT_USER_ID,
+            senderId: currentUserId,
             createdAt: new Date().toISOString(),
-            isTemp: true
+            isTemp: true,
         };
-        setMessages(prev => [...prev, tempMessage]);
+        setMessages((prev) => [...prev, tempMessage]);
+        requestAnimationFrame(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }));
 
         try {
-            await fetch(`${API_BASE}/message/${selectedChat.userId}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-User-Id": CURRENT_USER_ID
+            const response = await fetch(
+                `${CHAT_API}/message/${encodeURIComponent(selectedChat.userId)}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${currentToken}`,
+                    },
+                    body: JSON.stringify({ text: textToSend }),
                 },
-                body: JSON.stringify({ text: textToSend })
+            );
+            if (!response.ok) throw new Error("Failed to send message");
+
+            setChats((prev) => {
+                const index = prev.findIndex((c) => c.id === selectedChat.id);
+                if (index === -1) return prev;
+                const updated = [...prev];
+                const [chat] = updated.splice(index, 1);
+                return [
+                    {
+                        ...chat,
+                        lastMessage: textToSend,
+                        lastMessagePreview: textToSend,
+                        lastModifiedAt: new Date().toISOString(),
+                        unread: false,
+                    },
+                    ...updated,
+                ];
             });
 
-            // После успешной отправки обновляем превью чата в списке
-            setChats(prev => {
-                const updatedChats = prev.map(c =>
-                    c.id === selectedChat.id
-                        ? { ...c, lastMessage: textToSend, lastModifiedAt: new Date().toISOString(), unread: false }
-                        : c
-                );
-                // Перемещаем обновленный чат наверх списка
-                const chatIndex = updatedChats.findIndex(c => c.id === selectedChat.id);
-                if (chatIndex > 0) {
-                    const [chat] = updatedChats.splice(chatIndex, 1);
-                    updatedChats.unshift(chat);
-                }
-                return updatedChats;
-            });
-
+            // Обновляем список: temp-чат заменится реальным, если он был создан сервером.
+            chatsLoadedRef.current = false;
+            loadChats(false);
         } catch (error) {
-            console.error("Failed to send message", error);
+            console.error("Failed to send message:", error);
+            setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
         }
     };
 
-    const chatListBottomRef = useRef(null);
-    useEffect(() => {
-        const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting && hasMoreChats && !isLoadingChats) {
-                fetchChats(lastChatAfterRef.current, true);
-            }
-        }, { threshold: 0.1 });
-
-        if (chatListBottomRef.current) observer.observe(chatListBottomRef.current);
-        return () => observer.disconnect();
-    }, [hasMoreChats, isLoadingChats, fetchChats]);
-
-    useEffect(() => {
-        const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting && hasMoreMessages && !isLoadingMessages && messages.length > 0) {
-                fetchMessages(selectedChat, lastMessageIdRef.current, true);
-            }
-        }, { threshold: 0.1 });
-
-        if (messagesTopRef.current) observer.observe(messagesTopRef.current);
-        return () => observer.disconnect();
-    }, [hasMoreMessages, isLoadingMessages, messages.length, selectedChat, fetchMessages]);
-
-
     return (
-        <div className={`chats-page-container ${selectedChat ? 'chat-open' : ''}`}>
-            {/* Левая панель: Список чатов */}
-            <div className="chats-sidebar">
-                <div className="sidebar-header">
-                    <h2>Сообщения</h2>
+      <div
+        className={`chats-page-container ${selectedChat ? "chat-open" : ""}`}
+      >
+        {/* Левая панель: Список чатов */}
+        <div className="chats-sidebar">
+          <div className="sidebar-header">
+            <h2>Сообщения</h2>
+          </div>
+          <div className="chats-list">
+            {chats.map((chat) => (
+              <div
+                key={chat.id}
+                className={`chat-item ${selectedChat?.id === chat.id ? "active" : ""}`}
+                onClick={() => setSelectedChat(chat)}
+              >
+                <div className="chat-avatar">
+                  {chat.userName?.[0]?.toUpperCase() || "?"}
                 </div>
-                <div className="chats-list">
-                    {chats.map(chat => (
-                        <div
-                            key={chat.id}
-                            className={`chat-item ${selectedChat?.id === chat.id ? 'active' : ''}`}
-                            onClick={() => setSelectedChat(chat)}
-                        >
-                            <div className="chat-avatar">{chat.userName?.[0]?.toUpperCase() || '?'}</div>
-                            <div className="chat-info">
-                                <div className="chat-name-row">
-                                    <span className="chat-name">{chat.userName || chat.userId}</span>
-                                    <span className="chat-time">{formatTime(chat.lastModifiedAt)}</span>
-                                </div>
-                                <div className="chat-last-message-row">
-                                    <span className="chat-last-message">
-                                        {chat.lastMessagePreview || chat.lastMessage || "Нет сообщений"}
-                                    </span>
-                                    {chat.unread && <span className="unread-badge">!</span>}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-
-                    {isLoadingChats && <div className="loading-indicator">Загрузка чатов...</div>}
-                    <div ref={chatListBottomRef} style={{ height: '10px' }} />
+                <div className="chat-info">
+                  <div className="chat-name-row">
+                    <span className="chat-name">
+                      {chat.userName || chat.userId}
+                    </span>
+                    <span className="chat-time">
+                      {formatTime(chat.lastMessageAt)}
+                    </span>
+                  </div>
+                  <div className="chat-last-message-row">
+                    <span className="chat-last-message">
+                      {chat.lastMessagePreview ||
+                        chat.lastMessage ||
+                        "Нет сообщений"}
+                    </span>
+                    {chat.unread && <span className="unread-badge">!</span>}
+                  </div>
                 </div>
-            </div>
+              </div>
+            ))}
 
-            {/* Правая панель: Активный чат */}
-            <div className="chat-main-area">
-                {selectedChat ? (
-                    <>
-                        <div className="chat-header">
-                            <button className="back-btn-mobile" onClick={() => setSelectedChat(null)}>
-                                ←
-                            </button>
-                            <div className="chat-user-info">
-                                <h3>{selectedChat.userName || selectedChat.userId}</h3>
-                                <span className="online-status">В сети</span>
-                            </div>
-                            <button className="close-chat-btn" onClick={() => {
-                                setSelectedChat(null);
-                                navigate(-1);
-                            }}>
-                                ✕
-                            </button>
-                        </div>
-
-                        <div className="chat-messages-area">
-                            {isLoadingMessages && messages.length === 0 ? (
-                                <div className="loading-indicator">Загрузка сообщений...</div>
-                            ) : (
-                                <>
-                                    <div ref={messagesTopRef} style={{ height: '10px' }} />
-                                    {isLoadingMessages && messages.length > 0 && (
-                                        <div className="loading-indicator-small">Загрузка старых сообщений...</div>
-                                    )}
-
-                                    {messages.length === 0 ? (
-                                        <div className="empty-chat-placeholder">
-                                            <p>Начните общение с {selectedChat.userName || selectedChat.userId}</p>
-                                        </div>
-                                    ) : (
-                                        messages.map((msg) => (
-                                            <div
-                                                key={msg.id}
-                                                className={`message-bubble ${msg.senderId === CURRENT_USER_ID ? "my-message" : "other-message"} ${msg.isTemp ? "temp-message" : ""}`}
-                                            >
-                                                <p className="message-text">{msg.text}</p>
-                                                <span className="message-time">{formatTime(msg.createdAt)}</span>
-                                            </div>
-                                        ))
-                                    )}
-                                    <div ref={messagesEndRef} />
-                                </>
-                            )}
-                        </div>
-
-                        <form className="chat-input-area" onSubmit={handleSendMessage}>
-                            <input
-                                type="text"
-                                placeholder="Введите сообщение..."
-                                value={inputText}
-                                onChange={(e) => setInputText(e.target.value)}
-                                disabled={isLoadingMessages}
-                            />
-                            <button type="submit" disabled={!inputText.trim() || isLoadingMessages}>
-                                Отправить
-                            </button>
-                        </form>
-                    </>
-                ) : (
-                    <div className="no-chat-selected">
-                        <div className="no-chat-icon">💬</div>
-                        <h3>Выберите чат, чтобы начать общение</h3>
-                        <p>Или вернитесь к просмотру баннеров</p>
-                        <button className="back-to-banners-btn" onClick={() => navigate("/")}>
-                            К баннерам
-                        </button>
-                    </div>
-                )}
-            </div>
+            {isLoadingChats && (
+              <div className="loading-indicator">Загрузка чатов...</div>
+            )}
+            <div ref={chatsBottomRef} style={{ height: "10px" }} />
+          </div>
         </div>
+
+        {/* Правая панель: Активный чат */}
+        <div className="chat-main-area">
+          {selectedChat ? (
+            <>
+              <div className="chat-header">
+                <div className="chat-user-info">
+                  <h3>{selectedChat.userName || selectedChat.userId}</h3>
+                </div>
+                <button
+                  className="close-chat-btn"
+                  onClick={() => {
+                    setSelectedChat(null);
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="chat-messages-area" ref={messagesAreaRef}>
+                {!isTempChat(selectedChat) && (
+                  <div ref={messagesTopRef} style={{ height: "10px" }} />
+                )}
+
+                {isLoadingMessages && messages.length === 0 ? (
+                  <div className="loading-indicator">Загрузка сообщений...</div>
+                ) : (
+                  <>
+                    {isLoadingMessages && messages.length > 0 && (
+                      <div className="loading-indicator-small">
+                        Загрузка старых сообщений...
+                      </div>
+                    )}
+
+                    {messages.length === 0 ? (
+                      <div className="empty-chat-placeholder">
+                        <p>
+                          Начните общение с{" "}
+                          {selectedChat.userName || selectedChat.userId}
+                        </p>
+                      </div>
+                    ) : (
+                      messages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`message-bubble ${
+                            msg.senderId === currentUserId
+                              ? "my-message"
+                              : "other-message"
+                          } ${msg.isTemp ? "temp-message" : ""}`}
+                        >
+                          <p className="message-text">{msg.text}</p>
+                          <span className="message-time">
+                            {formatTime(msg.createdAt)}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                    <div ref={messagesEndRef} />
+                  </>
+                )}
+              </div>
+
+              <form className="chat-input-area" onSubmit={handleSendMessage}>
+                <div className="input-wrapper">
+                  <input
+                    type="text"
+                    placeholder="Введите сообщение..."
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    disabled={!isAuthenticated || !token || isLoadingMessages}
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={
+                      !isAuthenticated ||
+                      !token ||
+                      !inputText.trim() ||
+                      isLoadingMessages
+                    }
+                  >
+                    <MdSend size={24} />
+                  </button>
+                </div>
+              </form>
+            </>
+          ) : (
+            <div className="no-chat-selected">
+              <div className="no-chat-icon">💬</div>
+              <h3>Выберите, кому хотели бы написать</h3>
+            </div>
+          )}
+        </div>
+      </div>
     );
 }
 
@@ -350,7 +511,12 @@ function formatTime(isoString) {
     const isToday = date.toDateString() === now.toDateString();
 
     if (isToday) {
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
-    return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString([], {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 }
