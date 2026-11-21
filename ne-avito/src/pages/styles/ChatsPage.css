@@ -150,7 +150,7 @@
 
 .chat-user-info h3 {
     margin: 0;
-    font-size: 16px;
+    font-size: 17px;
 }
 
 .close-chat-btn {
@@ -174,8 +174,11 @@
 
 .empty-chat-placeholder {
     text-align: center;
-    color: #888;
     margin-top: 50px;
+}
+
+.empty-chat-placeholder p {
+    color: var(--text)
 }
 
 .message-bubble {

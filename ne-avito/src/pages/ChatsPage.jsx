@@ -30,7 +30,6 @@ export default function ChatsPage() {
 
     const chatsLoadingRef = useRef(false);
     const messagesLoadingRef = useRef(false);
-    const chatsLoadedRef = useRef(false);
     const chatsCursorRef = useRef(null);
     const chatsHasMoreRef = useRef(true);
     const messagesCursorRef = useRef(null);
@@ -62,7 +61,6 @@ export default function ChatsPage() {
         const currentToken = tokenRef.current;
         if (!isAuthenticated || !currentToken) return;
         if (chatsLoadingRef.current) return;
-        if (!append && chatsLoadedRef.current) return;
         if (append && (!chatsHasMoreRef.current || !chatsCursorRef.current)) return;
 
         chatsLoadingRef.current = true;
@@ -82,7 +80,7 @@ export default function ChatsPage() {
             const loaded = Array.isArray(data.chats) ? data.chats : [];
 
             const previousCursor = chatsCursorRef.current;
-            const oldest = loaded[loaded.length - 1]?.lastModifiedAt ?? null;
+            const oldest = loaded[loaded.length - 1]?.lastMessageAt ?? null;
 
 
             const more =
@@ -102,8 +100,6 @@ export default function ChatsPage() {
                 const real = loaded.filter((r) => !temps.some((t) => t.userId === r.userId));
                 return [...temps, ...real];
             });
-
-            if (!append) chatsLoadedRef.current = true;
         } catch (error) {
             console.error("Error fetching chats:", error);
             chatsHasMoreRef.current = false;
@@ -140,7 +136,6 @@ export default function ChatsPage() {
             const data = await response.json();
             const loaded = Array.isArray(data.messages) ? data.messages : [];
 
-            // Ответ от предыдущего чата больше не применяем.
             if (activeChatIdRef.current !== chatId) return;
 
             const oldest = loaded[loaded.length - 1]?.id ?? null;
@@ -186,7 +181,6 @@ export default function ChatsPage() {
 
 
     useEffect(() => {
-        chatsLoadedRef.current = false;
         chatsHasMoreRef.current = true;
         chatsCursorRef.current = null;
         messagesHasMoreRef.current = true;
@@ -206,6 +200,8 @@ export default function ChatsPage() {
     useEffect(() => {
         if (!isAuthenticated || !tokenRef.current || !targetUserId) return;
 
+        if (chatsLoadingRef.current) return;
+
         const existing = chats.find((c) => c.userId === targetUserId);
         if (existing) {
             setSelectedChat(existing);
@@ -213,9 +209,7 @@ export default function ChatsPage() {
             const tempChat = {
                 id: `temp-${targetUserId}`,
                 userId: targetUserId,
-                userName: `Пользователь ${targetUserId}`,
-                lastMessage: "",
-                lastModifiedAt: new Date().toISOString(),
+                lastMessagePreview: "",                
                 unread: false,
             };
             setSelectedChat(tempChat);
@@ -224,7 +218,8 @@ export default function ChatsPage() {
             );
         }
         setSearchParams({}, { replace: true });
-    }, [isAuthenticated, targetUserId, chats, setSearchParams]);
+    }, [isAuthenticated, targetUserId, chats, isLoadingChats, setSearchParams]);
+
 
     // Временной чат заменяется реальным, когда тот появляется в списке.
     useEffect(() => {
@@ -237,7 +232,7 @@ export default function ChatsPage() {
         );
     }, [chats, selectedChat]);
 
-    // Смена активного чата. Для temp-чата сообщения не загружаются вообще.
+    // Смена активного чата
     useEffect(() => {
         const chat = selectedChatRef.current;
         activeChatIdRef.current = chat && !isTempChat(chat) ? chat.id : null;
@@ -249,7 +244,7 @@ export default function ChatsPage() {
         loadMessages(chat, null, false);
     }, [isAuthenticated, selectedChatId, loadMessages]);
 
-    // Подгрузка старых чатов: observer не пересоздаётся при каждом setIsLoadingChats.
+    // Подгрузка старых чатов
     useEffect(() => {
         const node = chatsBottomRef.current;
         if (!node || !isAuthenticated || !tokenRef.current) return;
@@ -330,6 +325,7 @@ export default function ChatsPage() {
 
       return () => clearInterval(timer);
     }, [isAuthenticated]);
+
 
     useEffect(() => {
       const chat = selectedChatRef.current;
@@ -423,18 +419,14 @@ export default function ChatsPage() {
                 return [
                     {
                         ...chat,
-                        lastMessage: textToSend,
                         lastMessagePreview: textToSend,
-                        lastModifiedAt: new Date().toISOString(),
+                        lastMessageAt: new Date().toISOString(),
                         unread: false,
                     },
                     ...updated,
                 ];
             });
 
-            // Обновляем список: temp-чат заменится реальным, если он был создан сервером.
-            chatsLoadedRef.current = false;
-            loadChats(false);
         } catch (error) {
             console.error("Failed to send message:", error);
             setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id));
@@ -461,7 +453,7 @@ export default function ChatsPage() {
                 <div className="chat-info">
                   <div className="chat-name-row">
                     <span className="chat-name">
-                      {chat.userName || chat.userId}
+                      {chat.userId}
                     </span>
                     <span className="chat-time">
                       {formatTime(chat.lastMessageAt)}
@@ -469,9 +461,7 @@ export default function ChatsPage() {
                   </div>
                   <div className="chat-last-message-row">
                     <span className="chat-last-message">
-                      {chat.lastMessagePreview ||
-                        chat.lastMessage ||
-                        "Нет сообщений"}
+                      {chat.lastMessagePreview || "Нет сообщений"}
                     </span>
                     {chat.unread && <span className="unread-badge">!</span>}
                   </div>
@@ -498,7 +488,7 @@ export default function ChatsPage() {
                   ←
                 </button>
                 <div className="chat-user-info">
-                  <h3>{selectedChat.userName || selectedChat.userId}</h3>
+                  <h3>{ selectedChat.userId}</h3>
                 </div>
                 <button
                   className="close-chat-btn"
@@ -528,8 +518,7 @@ export default function ChatsPage() {
                     {messages.length === 0 ? (
                       <div className="empty-chat-placeholder">
                         <p>
-                          Начните общение с{" "}
-                          {selectedChat.userName || selectedChat.userId}
+                          Начните общение с { selectedChat.userId}
                         </p>
                       </div>
                     ) : (
