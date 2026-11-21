@@ -28,8 +28,6 @@ export default function ChatsPage() {
 
     const [inputText, setInputText] = useState("");
 
-    // Ref-ы нужны, чтобы observer-ы не пересоздавались на каждом изменении state
-    // и не запускали каскад бесконечных подгрузок.
     const chatsLoadingRef = useRef(false);
     const messagesLoadingRef = useRef(false);
     const chatsLoadedRef = useRef(false);
@@ -39,14 +37,16 @@ export default function ChatsPage() {
     const messagesHasMoreRef = useRef(true);
     const activeChatIdRef = useRef(null);
     const selectedChatRef = useRef(null);
-    // Строка токена меняется при silent renew (~раз в 4 минуты), но это не должно
-    // перезагружать страницу. Актуальный токен берём из ref в момент запроса.
+
     const tokenRef = useRef(token);
 
     const chatsBottomRef = useRef(null);
     const messagesTopRef = useRef(null);
     const messagesEndRef = useRef(null);
     const messagesAreaRef = useRef(null);
+
+    const chatsSinceRef = useRef(null);
+    const messagesSinceRef = useRef(null);
 
     const selectedChatId = selectedChat?.id ?? null;
 
@@ -84,8 +84,7 @@ export default function ChatsPage() {
             const previousCursor = chatsCursorRef.current;
             const oldest = loaded[loaded.length - 1]?.lastModifiedAt ?? null;
 
-            // Курсор должен двигаться, иначе подгрузка будет бесконечно
-            // возвращать одну и ту же страницу.
+
             const more =
                 loaded.length >= CHATS_PAGE_SIZE &&
                 Boolean(oldest) &&
@@ -185,8 +184,7 @@ export default function ChatsPage() {
         }
     }, [isAuthenticated]);
 
-    // Смена пользователя: полный сброс и одна загрузка.
-    // Silent renew токена сюда больше не попадает.
+
     useEffect(() => {
         chatsLoadedRef.current = false;
         chatsHasMoreRef.current = true;
@@ -194,6 +192,7 @@ export default function ChatsPage() {
         messagesHasMoreRef.current = true;
         messagesCursorRef.current = null;
         activeChatIdRef.current = null;
+        chatsSinceRef.current = new Date().toISOString(); 
 
         setChats([]);
         setSelectedChat(null);
@@ -272,8 +271,7 @@ export default function ChatsPage() {
         return () => observer.disconnect();
     }, [isAuthenticated, loadChats]);
 
-    // Подгрузка старых сообщений. Сентайл всегда смонтирован у реального чата,
-    // поэтому observer живёт стабильно и не вызывает повторные запросы сам по себе.
+    // Подгрузка старых сообщений.
     useEffect(() => {
         const node = messagesTopRef.current;
         if (
@@ -301,6 +299,89 @@ export default function ChatsPage() {
         observer.observe(node);
         return () => observer.disconnect();
     }, [isAuthenticated, loadMessages, selectedChatId]);
+
+    useEffect(() => {
+      if (!isAuthenticated) return;
+
+      const timer = setInterval(async () => {
+        const token = tokenRef.current;
+        if (!token) return;
+
+        try {
+          const since = chatsSinceRef.current;
+          const response = await fetch(
+            `${CHAT_API}/new?since=${encodeURIComponent(since)}`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          if (!response.ok) return;
+
+          const { chats: fresh } = await response.json();
+          chatsSinceRef.current = new Date().toISOString();
+          if (!fresh?.length) return;
+
+          setChats((prev) => [
+            ...fresh,
+            ...prev.filter((c) => !fresh.some((f) => f.userId === c.userId)),
+          ]);
+        } catch (error) {
+          console.error("chat polling:", error);
+        }
+      }, 5000);
+
+      return () => clearInterval(timer);
+    }, [isAuthenticated]);
+
+    useEffect(() => {
+      const chat = selectedChatRef.current;
+      if (!isAuthenticated || !chat || isTempChat(chat)) return;
+
+      messagesSinceRef.current = new Date().toISOString();
+
+      const timer = setInterval(async () => {
+        const token = tokenRef.current;
+        const opened = selectedChatRef.current;
+        if (!token || !opened || isTempChat(opened)) return;
+
+        try {
+          const response = await fetch(
+            `${CHAT_API}/message/${encodeURIComponent(opened.userId)}/new` +
+              `?since=${encodeURIComponent(messagesSinceRef.current)}`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          if (!response.ok) return;
+
+          const { messages: fresh } = await response.json();
+          messagesSinceRef.current = new Date().toISOString();
+          if (!fresh?.length) return;
+
+
+          setMessages((prev) => {
+            const additions = fresh.filter(
+              (m) => !prev.some((p) => p.id === m.id),
+            );
+
+            const withoutSentTemps = prev.filter((p) => {
+              if (!p.isTemp) return true;
+
+              return !additions.some(
+                (m) =>
+                  m.senderId === p.senderId &&
+                  m.text === p.text &&
+                  Math.abs(Date.parse(m.createdAt) - Date.parse(p.createdAt)) <
+                    5000,
+              );
+            });
+
+            return [...withoutSentTemps, ...additions];
+          });
+
+        } catch (error) {
+          console.error("message polling:", error);
+        }
+      }, 5000);
+
+      return () => clearInterval(timer);
+    }, [isAuthenticated, selectedChatId]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
@@ -376,9 +457,7 @@ export default function ChatsPage() {
                 className={`chat-item ${selectedChat?.id === chat.id ? "active" : ""}`}
                 onClick={() => setSelectedChat(chat)}
               >
-                <div className="chat-avatar">
-                  {chat.userName?.[0]?.toUpperCase() || "?"}
-                </div>
+                <div className="chat-avatar"></div>
                 <div className="chat-info">
                   <div className="chat-name-row">
                     <span className="chat-name">
@@ -412,6 +491,12 @@ export default function ChatsPage() {
           {selectedChat ? (
             <>
               <div className="chat-header">
+                <button
+                  className="back-btn-mobile"
+                  onClick={() => setSelectedChat(null)}
+                >
+                  ←
+                </button>
                 <div className="chat-user-info">
                   <h3>{selectedChat.userName || selectedChat.userId}</h3>
                 </div>
