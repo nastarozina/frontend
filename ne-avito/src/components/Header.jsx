@@ -25,6 +25,17 @@ export default function Header() {
               {link.label}
             </NavLink>
           ))}
+
+          {auth.isAuthenticated && (
+            <NavLink
+              key="/chats"
+              to="/chats"
+              className={({ isActive }) => (isActive ? "active-link" : "")}
+            >
+              Сообщения
+            </NavLink>
+          )}
+
           {auth.isAuthenticated ? (
             <div>
               {auth.user?.profile.name}

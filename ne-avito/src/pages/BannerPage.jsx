@@ -3,8 +3,12 @@ import { useEffect, useState } from "react";
 import HorizontalPhotoGallery from "../components/HorizontalPhotoGallery";
 import "./styles/BannerPage.css";
 import { BANNER_API } from "../constants";
+import { useAuth } from "react-oidc-context";
 
 export default function BannerPage() {
+    const auth = useAuth();
+    const isAuthenticated = auth.isAuthenticated;
+
     const { bannerId } = useParams();
     const navigate = useNavigate();
     const [banner, setBanner] = useState(null);
@@ -44,10 +48,12 @@ export default function BannerPage() {
           <div className="text-block">
             <h2>{banner.name}</h2>
 
-            {/* <-- Кнопка написания пользователю */}
-            <button className="write-user-btn" onClick={handleOpenChat}>
-                Написать пользователю
-            </button>
+            {isAuthenticated &&
+              auth.user?.profile?.sub != banner.ownerId && (
+                <button className="write-user-btn" onClick={handleOpenChat}>
+                  Написать пользователю
+                </button>
+              )}
 
             <h3>Описание</h3>
             <p>{banner.description}</p>

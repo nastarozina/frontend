@@ -37,16 +37,12 @@
 .write-user-btn {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
     background-color: #007bff;
     color: white;
     border: none;
     padding: 12px 24px;
     border-radius: 8px;
     font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
     margin: 20px 0;
     transition: background-color 0.2s, transform 0.1s;
     width: fit-content;
