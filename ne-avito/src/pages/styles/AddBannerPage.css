@@ -112,15 +112,17 @@ textarea:hover,
 
 .addBanner {
   width: fit-content;
-  padding: 15px 55px;
-  border-radius: 10px;
+  padding: 12px 50px;
+  border-radius: 8px;
+  font-size: 16px;
   border:none;
-  background: #6179BA;
+  background: #007bff;
   color: white;
   margin-top: 20px;
-  letter-spacing: 0.6px;
+  margin-bottom: 50px;
+  transition: background-color 0.2s, transform 0.1s;
 }
 
 .addBanner:hover {
-  background: #6A84CC;
+  background-color: #0056b3;
 }

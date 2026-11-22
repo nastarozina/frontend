@@ -43,7 +43,7 @@
 }
 
 .root-category-item.active {
-  background: #4f46e5;
+  background: var(--purple-blue);
 }
 
 .banners-main-content {
@@ -69,7 +69,6 @@
 
 .banner:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
 .name_banner {
