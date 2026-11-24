@@ -34,7 +34,7 @@
     text-align: justify;
 }
 
-.write-user-btn {
+.btn-style-1 {
     display: flex;
     align-items: center;
     background-color: #007bff;
@@ -48,7 +48,7 @@
     width: fit-content;
 }
 
-.write-user-btn:hover {
+.btn-style-1:hover {
     background-color: #0056b3;
 }
 

@@ -6,6 +6,7 @@ import AddBannerPage from "./pages/AddBannerPage";
 import BannerPage from "./pages/BannerPage";
 import ChatsPage from "./pages/ChatsPage";
 import AccountBanners from "./pages/AccountBanners";
+import EditBannerPage from "./pages/EditBannerPage";
 import "./App.css";
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           <Route path="/banner/:bannerId" element={<BannerPage />} />
           <Route path="/chats" element={<ChatsPage />} />
           <Route path="/myBanners" element={<AccountBanners />} />
+          <Route path="/editBanner/:bannerId" element={<EditBannerPage />} />
         </Routes>
       </main>
 

@@ -1,0 +1,308 @@
+import { useRef, useState, useEffect, useMemo } from "react";
+import {useParams, useNavigate } from "react-router-dom";
+import "./styles/AddBannerPage.css";
+import { BANNER_API, CATEGORY_API, MINIO } from "../constants";
+import CategoryItem from "../components/CategoryItem";
+import { useAuth } from "react-oidc-context";
+
+export default function EditBannerPage() {
+    const { bannerId } = useParams();
+    const [banner, setBanner] = useState(null);
+    const [name, setName] = useState("");
+      const [description, setDescription] = useState("");
+      const [categories, setCategories] = useState([]);
+      const [selectedCategory, setSelectedCategory] = useState(null);
+      const [images, setImages] = useState([]);
+      const [existingImages, setExistingImages] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState("");
+    
+      const inputRef = useRef(null);
+      const navigate = useNavigate();
+    
+      const auth = useAuth();
+      const token = auth.user?.access_token;
+    
+      const handleChange = (e) => {
+        const newFiles = Array.from(e.target.files);
+    
+        setImages((prev) => [...prev, ...newFiles]);
+    
+        e.target.value = "";
+      };
+    
+      const removeImage = (index) => {
+        setImages((prev) => prev.filter((_, i) => i !== index));
+      };
+
+      const removeExistingImage = (imageId) => {
+        if (!window.confirm("Вы точно хотите удалить изображение?")) return;
+
+        fetch(`${BANNER_API}/${bannerId}/images/${imageId}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+        .then((response) => {
+            if (!response.ok)
+              throw new Error(`Ошибка при удалении изображения - ${response.status} ${response.statusText}`);
+            
+            setExistingImages((prev) => prev.filter((image) => image.id !== imageId));
+        })
+        .catch((err) => {
+          console.error(err);
+          setError(err.message);
+        })
+      };
+
+      useEffect(() => {
+        fetch(`${BANNER_API}/${bannerId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            setBanner(data);
+            setDescription(data.description)
+            setName(data.name)
+            setSelectedCategory(data.categories.at(-1).id);
+            setExistingImages(data.images ?? []);
+          });
+      }, [bannerId]);
+    
+      useEffect(() => {
+        fetch(CATEGORY_API)
+          .then((response) => response.json())
+          .then((data) => {
+            setCategories(data);
+          });
+      }, []);
+    
+      const categoriesByParent = useMemo(() => {
+        const map = new Map();
+    
+        categories.forEach((category) => {
+          const parentId = category.parentId ?? null;
+    
+          if (!map.has(parentId)) {
+            map.set(parentId, []);
+          }
+    
+          map.get(parentId).push(category);
+        });
+    
+        return map;
+      }, [categories]);
+    
+      const mainCategories = categoriesByParent.get(null) ?? [];
+    
+      async function createBanner(event) {
+        event.preventDefault();
+    
+        setError("");
+    
+        if (!token) {
+          await auth.signinPopup();
+          return;
+        }
+    
+        if (!name.trim()) {
+          setError("Введите название объявления");
+          return;
+        }
+    
+        if (existingImages.length + images.length === 0) {
+          setError("Прикрепите изображение");
+          return;
+        }
+    
+        if (!selectedCategory) {
+          setError("Выберите категорию");
+        }
+    
+        try {
+          setLoading(true);
+    
+          // 1. Создаём Banner в MongoDB
+          const bannerResponse = await fetch(`${BANNER_API}/${bannerId}`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name,
+              description,
+              categoryId: selectedCategory,
+            }),
+          });
+    
+          if (!bannerResponse.ok) {
+            throw new Error("Не удалось создать объявление");
+          }
+    
+          const banner = await bannerResponse.json();
+    
+          // 2. Получаем presigned URL для MinIO
+          for (const image of images) {
+            const uploadUrlResponse = await fetch(
+              `${BANNER_API}/${banner.id}/images/upload-url`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  contentType: image.type,
+                }),
+              },
+            );
+    
+            if (!uploadUrlResponse.ok) {
+              throw new Error("Не удалось получить URL загрузки");
+            }
+    
+            const uploadData = await uploadUrlResponse.json();
+    
+            // 3. Загружаем изображение напрямую в MinIO
+            const uploadResponse = await fetch(uploadData.uploadUrl, {
+              method: "PUT",
+              headers: {
+                "Content-Type": image.type,
+              },
+              body: image,
+            });
+    
+            if (!uploadResponse.ok) {
+              throw new Error("Не удалось загрузить изображение");
+            }
+    
+            // 4. Подтверждаем загрузку
+            const completeResponse = await fetch(
+              `${BANNER_API}/${banner.id}/images/${uploadData.imageId}/complete`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              },
+            );
+    
+            if (!completeResponse.ok) {
+              throw new Error("Не удалось подтвердить загрузку");
+            }
+          }
+    
+          navigate(`/banner/${banner.id}`);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+    
+      return (
+        <div className="page-container">
+          <h2>Создание объявления</h2>
+
+          <form onSubmit={createBanner}>
+            <div>
+              <div className="categories-block">
+                {mainCategories.map((category) => (
+                  <CategoryItem
+                    key={category.id}
+                    category={category}
+                    categoriesByParent={categoriesByParent}
+                    selectedCategory={selectedCategory}
+                    onSelect={setSelectedCategory}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="form-block">
+              <label htmlFor="name">Название</label>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Введите название"
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-block">
+              <label htmlFor="description">Описание</label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Введите описание"
+                rows={5}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-block">
+              <label htmlFor="images">Изображения</label>
+              <div>
+                <div className="photos">
+                  {existingImages.map((image) => (
+                    <div className="photo" key={`existing-${image.id}`}>
+                      <img
+                        src={`${MINIO}/banner/${image.objectKey}`}
+                        alt={image.objectKey}
+                      />
+
+                      <button
+                        type="button"
+                        className="delete"
+                        onClick={() => removeExistingImage(image.id)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {images.map((image, index) => (
+                    <div className="photo" key={`${image.name}-${index}`}>
+                      <img src={URL.createObjectURL(image)} alt={image.name} />
+
+                      <button
+                        type="button"
+                        className="delete"
+                        onClick={() => removeImage(index)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => inputRef.current.click()}
+                    className="add"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <input
+                  id="images"
+                  ref={inputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  hidden
+                  onChange={handleChange}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+            <button className="btn-style-2" type="submit" disabled={loading}>
+              {loading ? "Сохранение..." : "Сохранить"}
+            </button>
+            {error && <p className="error">{error}</p>}
+          </form>
+        </div>
+      );
+    }

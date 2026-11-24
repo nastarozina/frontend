@@ -110,7 +110,7 @@ textarea:hover,
   background: var(--other-grey);
 }
 
-.addBanner {
+.btn-style-2 {
   width: fit-content;
   padding: 12px 50px;
   border-radius: 8px;
@@ -123,6 +123,6 @@ textarea:hover,
   transition: background-color 0.2s, transform 0.1s;
 }
 
-.addBanner:hover {
+.btn-style-2:hover {
   background-color: #0056b3;
 }
