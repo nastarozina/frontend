@@ -27,13 +27,23 @@ export default function Header() {
           ))}
 
           {auth.isAuthenticated && (
-            <NavLink
-              key="/chats"
-              to="/chats"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-            >
-              Сообщения
-            </NavLink>
+            <>
+              <NavLink
+                key="/myBanners"
+                to="/myBanners"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                Мои объявления
+              </NavLink>
+              
+              <NavLink
+                key="/chats"
+                to="/chats"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                Сообщения
+              </NavLink>
+            </>
           )}
 
           {auth.isAuthenticated ? (

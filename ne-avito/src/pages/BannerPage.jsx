@@ -32,6 +32,10 @@ export default function BannerPage() {
         navigate(`/chats?${params.toString()}`);
     };
 
+    const handleOpenEditPage = () => {
+        navigate(`/editBanner/${banner.id}`);
+    };
+
     return (
       <div className="banner-page">
         <div className="path">
@@ -49,11 +53,15 @@ export default function BannerPage() {
             <h2>{banner.name}</h2>
 
             {isAuthenticated &&
-              auth.user?.profile?.sub != banner.ownerId && (
-                <button className="write-user-btn" onClick={handleOpenChat}>
+              (auth.user?.profile?.sub !== banner.ownerId ? (
+                <button className="btn-style-1" onClick={handleOpenChat}>
                   Написать пользователю
                 </button>
-              )}
+              ) : (
+                <button className="btn-style-1" onClick={handleOpenEditPage}>
+                  Редактировать объявление
+                </button>
+              ))}
 
             <h3>Описание</h3>
             <p>{banner.description}</p>

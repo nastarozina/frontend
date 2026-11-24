@@ -243,7 +243,7 @@ export default function AddBannerPage() {
             />
           </div>
         </div>
-        <button className="addBanner" type="submit" disabled={loading}>
+        <button className="btn-style-2" type="submit" disabled={loading}>
           {loading ? "Создание..." : "Разместить"}
         </button>
         {error && <p className="error">{error}</p>}
